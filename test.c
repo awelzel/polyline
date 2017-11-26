@@ -9,7 +9,7 @@ decode_print_compare(const char *polyline, const float *expected, size_t n)
 {
 	float *result;
 	int r;
-	printf("POLYLINE        %s\n", polyline);
+	printf("POLYLINE        \"%s\"\n", polyline);
 	if ((r = polyline_decode(&result, polyline)) >= 0) {
 
 		if (r != n) {
@@ -19,7 +19,7 @@ decode_print_compare(const char *polyline, const float *expected, size_t n)
 		printf("EXPECTED RESULT ");
 		printf("[");
 		for (int i = 0; i < n; i++) {
-			printf("[%.5f, %.5f]%s%s",
+			printf("[%.7f, %.7f]%s%s",
 				expected[i * 2], expected[i * 2 + 1],
 				(i == n - 1) ? "" : ",",
 				(i == n - 1) ? "]\n" : " ");
@@ -27,7 +27,7 @@ decode_print_compare(const char *polyline, const float *expected, size_t n)
 		printf("DECODE RESULT   ");
 		printf("[");
 		for (int i = 0; i < r; i++) {
-			printf("[%.5f, %.5f]%s%s",
+			printf("[%.7f, %.7f]%s%s",
 				result[i * 2], result[i * 2 + 1],
 				(i == n - 1) ? "" : ",",
 				(i == r - 1) ? "]\n" : " ");

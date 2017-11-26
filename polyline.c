@@ -1,15 +1,14 @@
 /*
  * Encode and decode Google polyline in C.
  *
- * TODO: create a dprintf macro and remove the #ifdef DEBUG stuff.
  * TODO: Check for memory allocation errors and let them bubble through.
  */
+#include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <assert.h>
 #include "polyline.h"
 
 static const float e5 = 100000.0f;
@@ -24,13 +23,20 @@ struct buf {
 };
 
 #ifdef DEBUG
+#define dprintf(...) do { \
+	fprintf(stderr, "DEBUG polyline.%-25s -- ", __FUNCTION__); \
+	fprintf(stderr, __VA_ARGS__); \
+} while (0);
 static void
 print_bits(const uint32_t v) {
 	for (int i = 31; i >= 0; i--) {
-		printf("%d", (v >> i) & 0x1);
+		fprintf(stderr, "%d", (v >> i) & 0x1);
 	}
-	printf("\n");
+	fprintf(stderr, "\n");
 }
+#else
+#define dprintf(...)
+#define print_bits(...)
 #endif
 
 
@@ -43,10 +49,8 @@ _add_chunks_to_buf(struct buf *buf, uint8_t *chunks, size_t n, size_t coords_lef
 
 	if (buf->idx + n > buf->size) {
 		size_t new_size = buf->size + n + coords_left * 4;
-#ifdef DEBUG
-		printf("encode_realloc: coords_left=%lu n=%lu idx=%lu size=%lu new_size=%lu\n",
+		dprintf("realloc: coords_left=%lu n=%lu idx=%lu size=%lu new_size=%lu\n",
 			coords_left, n, buf->idx, buf->size, new_size);
-#endif
 
 		buf->data = realloc(buf->data, new_size * sizeof(float));
 		if (!buf->data)
@@ -84,8 +88,8 @@ polyline_encode_float(uint8_t *chunks, const float f)
 		val = ~val;
 	}
 
-	// printf("%f val=%u neg=%d ", f, val, neg);
-	// print_bits(val);
+	dprintf("%f val=%u val=%#0x neg=%d ", f, val, val, neg);
+	print_bits(val);
 
 	int i = 0;
 	do {
@@ -99,14 +103,14 @@ polyline_encode_float(uint8_t *chunks, const float f)
 		// 10) Add 63
 		chunk += 63;
 
+		dprintf("chunks[%d]: (val=%u) %c ", i, val, chunk);
+		print_bits(chunk);
+
 		chunks[i++] = chunk;
-		// printf("chunks[%d]: (val=%u) %c ", i, val, chunk);
-		// print_bits(chunk);
 
 	} while (i < max_5bit_chunks && val > 0);
 
 	assert(!val);
-	// printf("produced %d chunks\n", i);
 
 	return i;
 }
@@ -125,30 +129,34 @@ polyline_encode(char **polyline, const float coords[][2], size_t n)
 	const float *coords_ptr = &coords[0][0];
 	float lat_prev = 0.0f, lng_prev = 0.0f;
 	uint8_t chunk[max_5bit_chunks];
+
+	dprintf("start encode\n");
 	for (int i = 0; i < n; i++) {
 		// 1) and 2)
 		float lat = coords_ptr[i * 2];
 		float lng = coords_ptr[i * 2 + 1];
-		// printf("lat=%f lng=%f ", lat, lng);
+
 		lat = lat - lat_prev;
 		lng = lng - lng_prev;
-		// printf("diff lat=%f diff lng=%f\n", lat, lng);
+
 		lat_prev = coords_ptr[i * 2];
 		lng_prev = coords_ptr[i * 2 + 1];
 
 		size_t chunks = polyline_encode_float(chunk, lat);
-		_add_chunks_to_buf(&buf, chunk, chunks, n - i);
+		if (_add_chunks_to_buf(&buf, chunk, chunks, n - i)) {
+			return POLYLINE_NO_MEM;
+		}
 		chunks = polyline_encode_float(chunk, lng);
-		_add_chunks_to_buf(&buf, chunk, chunks, n - i);
+		if (_add_chunks_to_buf(&buf, chunk, chunks, n - i)) {
+			return POLYLINE_NO_MEM;
+		}
 	}
 	chunk[0] = '\0';
 	// Zero terminate the string. Fuck this is ugly...
 	_add_chunks_to_buf(&buf, chunk, 1, 0);
 	assert(!((char *)buf.data)[buf.idx - 1]);
-#ifdef DEBUG
-	printf("encode_buf_stats: allocs=%lu idx=%lu size=%lu strlen=%lu\n",
-	       buf.allocs, buf.idx, buf.size, strlen(buf.data));
-#endif
+	dprintf("encode_buf_stats: allocs=%lu idx=%lu size=%lu strlen=%lu\n",
+	        buf.allocs, buf.idx, buf.size, strlen(buf.data));
 	*polyline = buf.data;
 	return buf.idx - 1;
 }
@@ -161,14 +169,10 @@ polyline_encode(char **polyline, const float coords[][2], size_t n)
  */
 static int
 _add_coords_to_buf(struct buf *buf, const float *latlng, size_t input_left) {
-
-
 	if (buf->idx >= buf->size) {
 		size_t new_size = buf->size + ((input_left / max_5bit_chunks) / 2 + 1) * 2;
-#ifdef DEBUG
-		printf("decode_realloc: input_left=%lu idx=%lu size=%lu new_size=%lu\n",
+		dprintf("realloc: input_left=%lu idx=%lu size=%lu new_size=%lu\n",
 			input_left, buf->idx, buf->size, new_size);
-#endif
 
 		buf->data = realloc(buf->data, new_size * sizeof(float));
 		if (!buf->data)
@@ -182,7 +186,7 @@ _add_coords_to_buf(struct buf *buf, const float *latlng, size_t input_left) {
 	data[buf->idx] = latlng[0];
 	data[buf->idx + 1] = latlng[1];
 	buf->idx += 2;
-    return 0;
+	return 0;
 }
 
 /*
@@ -212,11 +216,14 @@ int polyline_decode(float **coords, const char *polyline)
 	int latlng_idx = 0;
 
 	int chunk_idx = 0;
+
+	dprintf("start decode\n");
 	while (*polyline) {
 		uint32_t chunk = *polyline++; polyline_left--;
 		chunk -= 63;
 		val = val | ((chunk & ~0x20) << (chunk_idx * 5));
 		chunk_idx++;
+
 		if (!(chunk & 0x20)) {
 			int neg = 0;
 
@@ -240,7 +247,9 @@ int polyline_decode(float **coords, const char *polyline)
 			if (latlng_idx > 1) {
 				prev_latlng[0] = prev_latlng[0] + latlng[0];
 				prev_latlng[1] = prev_latlng[1] + latlng[1];
-				_add_coords_to_buf(&buf, prev_latlng, polyline_left);
+				if (_add_coords_to_buf(&buf, prev_latlng, polyline_left)) {
+					return POLYLINE_NO_MEM;
+				}
 				latlng_idx = 0;
 			}
 
@@ -249,10 +258,8 @@ int polyline_decode(float **coords, const char *polyline)
 			val = 0;
 		}
 	}
-#ifdef DEBUG
-	printf("decode_stats: allocs=%lu idx=%lu size=%lu\n",
+	dprintf("decode_stats: allocs=%lu idx=%lu size=%lu\n",
 		buf.allocs, buf.idx, buf.size);
-#endif
 	*coords = (float*)buf.data;
 	return buf.idx / 2;
 }

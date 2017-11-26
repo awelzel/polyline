@@ -1,6 +1,6 @@
 .PHONY: clean
 
-CFLAGS=-Wall -pedantic -ansi -std=c99
+CFLAGS ?= -O2 -Wall -pedantic -ansi -std=c99
 OBJS = test.o polyline.o
 BINS = test
 test: test.o polyline.o
