@@ -70,7 +70,7 @@ _add_chunks_to_buf(struct buf *buf, uint8_t *chunks, size_t n, size_t coords_lef
  * Returns number of chunks created for use in copy.
  */
 static int
-polyline_encode_float(uint8_t *chunks, const float f)
+_polyline_encode_float(uint8_t *chunks, const float f)
 {
 	// Rounding taken from python-polyline, the spec from
 	// Google does not really mention this :-/
@@ -145,11 +145,11 @@ polyline_encode(char **polyline, const float coords[][2], size_t n)
 		lat_prev = coords_ptr[i * 2];
 		lng_prev = coords_ptr[i * 2 + 1];
 
-		size_t chunks = polyline_encode_float(chunk, lat);
+		size_t chunks = _polyline_encode_float(chunk, lat);
 		if (_add_chunks_to_buf(&buf, chunk, chunks, n - i)) {
 			return POLYLINE_NO_MEM;
 		}
-		chunks = polyline_encode_float(chunk, lng);
+		chunks = _polyline_encode_float(chunk, lng);
 		if (_add_chunks_to_buf(&buf, chunk, chunks, n - i)) {
 			return POLYLINE_NO_MEM;
 		}

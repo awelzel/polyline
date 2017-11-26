@@ -3,6 +3,8 @@
 
 #define POLYLINE_NO_MEM -5
 
+#include <stdlib.h>
+
 int polyline_encode(char **polyline, const float coords[][2], size_t n);
 int polyline_decode(float **coords, const char *const polyline);
 
