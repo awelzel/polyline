@@ -18,5 +18,8 @@ int main(int argc, char *argv[]) {
 		printf("    [%.4f, %.4f],\n", result[i * 2], result[i * 2 + 1]);
 	}
 	printf("]\n");
+	if (result) {
+		free(result);
+	}
 	return 0;
 }

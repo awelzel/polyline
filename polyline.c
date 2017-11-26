@@ -123,12 +123,7 @@ _polyline_encode_float(uint8_t *chunks, const float f)
 int
 polyline_encode(char **polyline, const float coords[][2], size_t n)
 {
-	struct buf buf;
-	buf.idx = 0;
-	buf.allocs = 0;
-	buf.data = NULL;
-	buf.size = 0;
-
+	struct buf buf = {0, };
 	const float *coords_ptr = &coords[0][0];
 	float lat_prev = 0.0f, lng_prev = 0.0f;
 	uint8_t chunk[max_5bit_chunks];
@@ -198,20 +193,14 @@ _add_coords_to_buf(struct buf *buf, const float *latlng, size_t input_left) {
  * Will allocate a buffer into `coords`. The caller is responsible to
  * free this buffer.
  *
- * Returns the number of coordinates. The number of float elements is
- * twice as big.
+ * Returns the number of coordinates. The number of float elements in
+ * the allocated buffer is twice as many.
  */
 int polyline_decode(float **coords, const char *polyline)
 {
-	size_t polyline_left = strlen(polyline);
+	struct buf buf = {0, };
 	uint32_t val = 0;
-
-	// state of allocated result!
-	struct buf buf;
-	buf.idx = 0;
-	buf.allocs = 0;
-	buf.data = NULL;
-	buf.size = 0;
+	size_t polyline_left = strlen(polyline);
 
 	// lat lng values;
 	float latlng[2];
