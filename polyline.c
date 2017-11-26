@@ -1,17 +1,17 @@
 /*
- * Encode and decode Google polyline in C.
+ * Encode and decode Google Polyline using C.
  *
- * TODO: Check for memory allocation errors and let them bubble through.
+ * https://developers.google.com/maps/documentation/utilities/polylinealgorithm
  */
 #include <assert.h>
-#include <stdio.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+
 #include "polyline.h"
 
-static const float e5 = 100000.0f;
+static const float precision = 100000.0f;
 static const int max_5bit_chunks = 6;
 
 /* Internal structure to help keep track of allocated data for the result. */
@@ -23,6 +23,7 @@ struct buf {
 };
 
 #ifdef DEBUG
+#include <stdio.h>
 #define dprintf(...) do { \
 	fprintf(stderr, "DEBUG polyline.%-25s -- ", __FUNCTION__); \
 	fprintf(stderr, __VA_ARGS__); \
@@ -71,7 +72,9 @@ _add_chunks_to_buf(struct buf *buf, uint8_t *chunks, size_t n, size_t coords_lef
 static int
 polyline_encode_float(uint8_t *chunks, const float f)
 {
-	uint32_t val = fabsf(f* e5);
+	// Rounding taken from python-polyline, the spec from
+	// Google does not really mention this :-/
+	uint32_t val = (uint32_t)(floorf(fabsf(f * precision) + 0.5));
 	int neg = (f < 0.0f);
 
 	// 3) Two's complement for negative numbers
@@ -242,7 +245,7 @@ int polyline_decode(float **coords, const char *polyline)
 				val = ~(val - 1);
 			}
 
-			float f = (float)(val) / e5 * (neg ? -1.0f : 1.0f);
+			float f = (float)(val) / precision * (neg ? -1.0f : 1.0f);
 			latlng[latlng_idx++] = f;
 			if (latlng_idx > 1) {
 				prev_latlng[0] = prev_latlng[0] + latlng[0];
