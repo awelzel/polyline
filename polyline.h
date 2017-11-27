@@ -8,7 +8,10 @@
 #define __POLYLINE_H__
 #include <stdlib.h>
 
-#define POLYLINE_OOM -1 /**< Return value if a memory allocation failed. */
+#define POLYLINE_ENOMEM -1 /**< Return value if a memory allocation failed. */
+#define POLYLINE_EINVAL -2 /**< Invalid arguments. */
+#define POLYLINE_EPARSE -3 /**< Failed to decode a polyline. */
+#define POLYLINE_ERANGE -4 /**< Coordinates out of range. Allowed is -180.0 to 180.0 */
 
 /**
  * Encode an array of floats to a Google Polyline string.
@@ -28,7 +31,7 @@
  * 	   On error, a value < 0 is returned. Possible error
  * 	   values include @ref POLYLINE_OOM.
  */
-int polyline_encode(char **polyline, const float const *coords, size_t n);
+int polyline_encode(char **dst, size_t *size, const float *coords, size_t n);
 
 /**
  * Decode a Google Polyline string to an array of floats.
@@ -38,17 +41,16 @@ int polyline_encode(char **polyline, const float const *coords, size_t n);
  * This pointer should be passed to `free()` in order to release the
  * allocated storage when it is no longer needed.
  *
- * @param coords Pointer to a `float *` into which the allocated
- *               buffer will be stored.
- * @param polyline C string representing a Google Polyline.
- * 		   Must be null byte (`\0`) terminated.
+ * @param dst Pointer to a `float *` into which the allocated buffer
+ * 	will be stored.
+ * @param polyline C string representing a Google Polyline. Must be
+ * 	null byte (`\0`) terminated.
  *
- * @return On success, returns the number of *coordinates*.
- * 	   Note, the number of float elements in the buffer
- * 	   will be twice the return value.
- * 	   On error, a value < 0 is returned. Possible error
- * 	   values include @ref POLYLINE_OOM.
+ * @return On success, returns the number of *coordinates*. Note, the
+ * 	number of float elements in the buffer will be twice the
+ * 	return value. On error, a value < 0 is returned. Possible error
+ * values include @ref POLYLINE_OOM.
  */
-int polyline_decode(float **const coords, const char *const polyline);
+int polyline_decode(float **dst, size_t *size, const char *polyline);
 
 #endif

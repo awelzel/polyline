@@ -12,50 +12,24 @@
 
 static char* program = NULL;
 
-static void
-usage()
-{
-	eprintf("Usage: %s [-h|-d|-e] [polyline]\n\n", program);
-	eprintf("Options:\n");
-	eprintf("  -h             Display this help message.\n");
-	eprintf("  -d [default]   Decode a polyline.\n");
-	eprintf("  -e             Encode coordinates and output a polyline.\n");
-	eprintf("  -p [default 5] Output precision when decoding. 0 to 10.\n");
-	eprintf("\n"
-	        "If no argument is provided following the options input\n"
-		"will be read from stdin.\n");
-
-
-	/*
-	eprintf("By default, decodes the polyline provided as argument.\n");
-	eprintf("\n\nExample:");
-	eprintf("    %s '??'\n");
-	eprintf("    [[0.0000, 0.0000], [0.0000, 0.0000]]\n");
-	eprintf("Without any argument, reads from stdin.\n");
-	*/
-}
-
 
 static void
-decode_line(const char *line, int precision) {
-	float *result;
+decode_line(float **dst, size_t *size, const char *line, int precision) {
 	int r;
-	if ((r = polyline_decode(&result, line)) < 0) {
+	if ((r = polyline_decode(dst, size, line)) < 0) {
 		eprintf("Failed to decode '%s'", line);
 		return;
 	}
+
 	printf("[");
 	for (int i = 0; i < r; i++) {
 		printf("[%.*f, %.*f]%s",
-		       precision, result[i * 2],
-		       precision, result[i * 2 + 1],
+		       precision, (*dst)[i * 2],
+		       precision, (*dst)[i * 2 + 1],
 		       (i < (r - 1)) ? ", " : ""
 		);
 	}
 	printf("]\n");
-
-	if (result)
-		free(result);
 }
 
 /* Replace these input characters with spaces when encoding. */
@@ -85,9 +59,9 @@ _strtof(float *fptr, char *nptr, char **endptr)
 }
 
 static int
-encode_line(char *line) {
+encode_line(char **dst, size_t *size, char *line) {
 	int i, r, floats = 0, in_space = 1;
-	char *ptr = line, *endptr, *result;
+	char *ptr = line, *endptr;
 	float *latlngs;
 
 	/*
@@ -135,21 +109,31 @@ encode_line(char *line) {
 	}
 	assert(floats == i);
 
-
-
-	if ((r = polyline_encode(&result, latlngs, i / 2)) < 0) {
+	if ((r = polyline_encode(dst, size, latlngs, i / 2)) < 0) {
 		eprintf("Failed to encode '%s'", line);
 		printf("\n"); /* Empty line on errors */
 		goto err;
 	}
-
-	/* Print a single coordinate */
-	printf("%s\n", result);
-	free(result);
+	printf("%s\n", *dst);
 err:
 	free(latlngs);
 	return 0;
 }
+
+static void
+usage()
+{
+	eprintf("Usage: %s [-h|-d|-e] [polyline]\n\n", program);
+	eprintf("Options:\n");
+	eprintf("  -h             Display this help message.\n");
+	eprintf("  -d [default]   Decode a polyline.\n");
+	eprintf("  -e             Encode coordinates and output a polyline.\n");
+	eprintf("  -p [default 5] Output precision when decoding. 0 to 10.\n");
+	eprintf("\n"
+	        "If no argument is provided following the options input\n"
+		"will be read from stdin.\n");
+}
+
 
 int
 main(int argc, char *argv[])
@@ -158,6 +142,9 @@ main(int argc, char *argv[])
 	int opt, encode = 0, decode = 0;
 	int precision = 5;
 	char *endptr;
+
+	void *dst = NULL;
+	size_t dst_size = 0;
 
 	opterr = 1;
 	while ((opt = getopt(argc, argv, "dehp:")) >= 0) {
@@ -200,9 +187,9 @@ main(int argc, char *argv[])
 			}
 
 			if (decode) {
-				decode_line(lineptr, precision);
+				decode_line((float **)&dst, &dst_size, lineptr, precision);
 			} else {
-				encode_line(lineptr);
+				encode_line((char **)&dst, &dst_size, lineptr);
 			}
 		}
 		if (lineptr && n > 0)
@@ -213,9 +200,12 @@ main(int argc, char *argv[])
 			return 1;
 		}
 		if (decode) {
-			decode_line(argv[optind], precision);
+			decode_line((float **)&dst, &dst_size, argv[optind], precision);
 		} else {
-			encode_line(argv[optind]);
+			encode_line((char **)&dst, &dst_size, argv[optind]);
 		}
 	}
+
+	if (dst)
+		free(dst);
 }

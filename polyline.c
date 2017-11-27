@@ -24,7 +24,7 @@ struct buf {
 #ifdef DEBUG
 #include <stdio.h>
 #define dprintf(...) do { \
-	fprintf(stderr, "DEBUG polyline.%-25s -- ", __FUNCTION__); \
+	fprintf(stderr, "DEBUG polyline.%-20s -- ", __FUNCTION__); \
 	fprintf(stderr, __VA_ARGS__); \
 } while (0);
 static void
@@ -47,6 +47,8 @@ print_bits(const uint32_t v) {
 static int
 _add_chunks_to_buf(struct buf *buf, uint8_t *chunks, size_t n, size_t coords_left) {
 
+	dprintf("buf: size=%lu idx=%lu data=%p\n",
+		buf->size, buf->idx, buf->data);
 	if (buf->idx + n > buf->size) {
 		size_t new_size = buf->size + n + coords_left * 4;
 		dprintf("realloc: coords_left=%lu n=%lu idx=%lu size=%lu new_size=%lu\n",
@@ -54,7 +56,7 @@ _add_chunks_to_buf(struct buf *buf, uint8_t *chunks, size_t n, size_t coords_lef
 
 		buf->data = realloc(buf->data, new_size * sizeof(float));
 		if (!buf->data)
-			return POLYLINE_OOM;
+			return POLYLINE_ENOMEM;
 		buf->size = new_size;
 		buf->allocs += 1;
 	}
@@ -106,8 +108,8 @@ _polyline_encode_float(uint8_t *chunks, const float f)
 		// 10) Add 63
 		chunk += 63;
 
-		dprintf("chunks[%d]: (val=%u) %c ", i, val, chunk);
-		print_bits(chunk);
+		// dprintf("chunks[%d]: (val=%u) %c ", i, val, chunk);
+		// print_bits(chunk);
 
 		chunks[i++] = chunk;
 
@@ -120,9 +122,15 @@ _polyline_encode_float(uint8_t *chunks, const float f)
 
 
 int
-polyline_encode(char **polyline, const float const *coords, size_t n)
+polyline_encode(char **dst, size_t *size, const float *coords, size_t n)
 {
-	struct buf buf = {0, };
+	struct buf buf = {
+		.data = *dst,
+		.size = *size,
+	};
+	if (!coords || (buf.data && !buf.size) || (!buf.data && buf.size))
+		return POLYLINE_EINVAL;
+
 	float lat_prev = 0.0f, lng_prev = 0.0f;
 	uint8_t chunk[max_5bit_chunks];
 
@@ -140,20 +148,21 @@ polyline_encode(char **polyline, const float const *coords, size_t n)
 
 		size_t chunks = _polyline_encode_float(chunk, lat);
 		if (_add_chunks_to_buf(&buf, chunk, chunks, n - i)) {
-			return POLYLINE_OOM;
+			return POLYLINE_ENOMEM;
 		}
 		chunks = _polyline_encode_float(chunk, lng);
 		if (_add_chunks_to_buf(&buf, chunk, chunks, n - i)) {
-			return POLYLINE_OOM;
+			return POLYLINE_ENOMEM;
 		}
 	}
 	chunk[0] = '\0';
 	// Zero terminate the string. Fuck this is ugly...
 	_add_chunks_to_buf(&buf, chunk, 1, 0);
 	assert(!((char *)buf.data)[buf.idx - 1]);
-	dprintf("encode_buf_stats: allocs=%lu idx=%lu size=%lu strlen=%lu\n",
+	dprintf("encode buf stats: allocs=%lu idx=%lu size=%lu strlen=%lu\n",
 	        buf.allocs, buf.idx, buf.size, strlen(buf.data));
-	*polyline = buf.data;
+	*dst = buf.data;
+	*size = buf.size;
 	return buf.idx - 1;
 }
 
@@ -168,12 +177,13 @@ static int
 _add_coords_to_buf(struct buf *buf, const float *latlng, size_t input_left) {
 	if (buf->idx >= buf->size) {
 		size_t new_size = buf->size + ((input_left / max_5bit_chunks) / 2 + 1) * 2;
-		dprintf("realloc: input_left=%lu idx=%lu size=%lu new_size=%lu\n",
-			input_left, buf->idx, buf->size, new_size);
+		dprintf("realloc: input_left=%lu idx=%lu new_size=%lu "
+			"buf->size=%lu buf->data=%p\n",
+			input_left, buf->idx, new_size, buf->size, buf->data);
 
 		buf->data = realloc(buf->data, new_size * sizeof(float));
 		if (!buf->data)
-			return POLYLINE_OOM;
+			return POLYLINE_ENOMEM;
 
 		buf->size = new_size;
 		buf->allocs += 1;
@@ -188,9 +198,12 @@ _add_coords_to_buf(struct buf *buf, const float *latlng, size_t input_left) {
 
 
 int
-polyline_decode(float **const coords, const char *polyline)
+polyline_decode(float **const dst, size_t *size, const char *polyline)
 {
-	struct buf buf = {0, };
+	struct buf buf = {
+		.data = *dst,
+		.size = *size,
+	};
 	uint32_t val = 0;
 	size_t polyline_left = strlen(polyline);
 
@@ -232,7 +245,7 @@ polyline_decode(float **const coords, const char *polyline)
 				prev_latlng[0] = prev_latlng[0] + latlng[0];
 				prev_latlng[1] = prev_latlng[1] + latlng[1];
 				if (_add_coords_to_buf(&buf, prev_latlng, polyline_left)) {
-					return POLYLINE_OOM;
+					return POLYLINE_ENOMEM;
 				}
 				latlng_idx = 0;
 			}
@@ -242,8 +255,9 @@ polyline_decode(float **const coords, const char *polyline)
 			val = 0;
 		}
 	}
-	dprintf("decode_stats: allocs=%lu idx=%lu size=%lu\n",
+	dprintf("decode buf stats: allocs=%lu idx=%lu size=%lu\n",
 		buf.allocs, buf.idx, buf.size);
-	*coords = (float*)buf.data;
+	*dst = buf.data;
+	*size = buf.size;
 	return buf.idx / 2;
 }
