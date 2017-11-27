@@ -6,11 +6,11 @@ BINS = test polyline
 
 all: test libpolyline.a polyline
 
-main.o: main.c polyline.h
 polyline.o: polyline.c polyline.h
-test.o: test.c polyline.h
+	$(CC) $(CFLAGS) -Wextra -c $<
 
-.o: polyline.h
+main.o: main.c polyline.h
+test.o: test.c polyline.h
 
 test: test.o polyline.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)

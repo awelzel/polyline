@@ -13,9 +13,12 @@ int main(int argc, char *argv[]) {
 		printf("ERROR!\n");
 		return 0;
 	}
-	printf("[\n");
+	printf("[");
 	for (int i = 0; i < r; i++) {
-		printf("    [%.4f, %.4f],\n", result[i * 2], result[i * 2 + 1]);
+		printf("[%.5f, %.5f]%s",
+		       result[i * 2], result[i * 2 + 1],
+		       (i < (r - 1)) ? ", " : ""
+		);
 	}
 	printf("]\n");
 	if (result) {

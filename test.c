@@ -41,7 +41,6 @@ decode_print_compare(const char *polyline, const float *expected, size_t n)
 	return 0;
 }
 
-
 int
 main(int argc, char *argv[])
 {
@@ -54,7 +53,7 @@ main(int argc, char *argv[])
 		{5.00000f, -5.0000f},
 		{5.00000f, -5.0000f},
 	};
-	r = polyline_encode(&result, data0, 2);
+	r = polyline_encode(&result, &data0[0][0], 2);
 	if (r != strlen(result)) {
 		printf("strlen and return value disagree!\n");
 		abort();
@@ -68,7 +67,7 @@ main(int argc, char *argv[])
 		{40.70000f, -120.950000f},
 		{43.2520000f, -126.4530000f},
 	};
-	r = polyline_encode(&result, data1, 3);
+	r = polyline_encode(&result, &data1[0][0], 3);
 	if (r != strlen(result)) {
 		printf("strlen and return value disagree!\n");
 		abort();
@@ -82,7 +81,7 @@ main(int argc, char *argv[])
 		{-180.00000f, 120.950000f},
 		{0.000f, -180.0},
 	};
-	r = polyline_encode(&result, data2, 3);
+	r = polyline_encode(&result, &data2[0][0], 3);
 	if (r != strlen(result)) {
 		printf("strlen and return value disagree!\n");
 		abort();
@@ -96,7 +95,7 @@ main(int argc, char *argv[])
 		{180.02f, 120.95f},
 		{188.07f, 121.0},
 	};
-	r = polyline_encode(&result, data3, 3);
+	r = polyline_encode(&result, &data3[0][0], 3);
 	if (r != strlen(result)) {
 		printf("strlen and return value disagree!\n");
 		abort();
@@ -116,7 +115,7 @@ main(int argc, char *argv[])
 		{85.81230f, -32.38735f},
 		{-30.40201f, -8.85930f},
 	};
-	r = polyline_encode(&result, data4, 8);
+	r = polyline_encode(&result, &data4[0][0], 8);
 	if (r != strlen(result)) {
 		printf("strlen and return value disagree!\n");
 		abort();
@@ -128,7 +127,7 @@ main(int argc, char *argv[])
 	const float data5[][2] = {
 		{0.0, 0.0},
 	};
-	r = polyline_encode(&result, data5, 1);
+	r = polyline_encode(&result, &data5[0][0], 1);
 	if (r != strlen(result)) {
 		printf("strlen and return value disagree!\n");
 		abort();
@@ -137,12 +136,12 @@ main(int argc, char *argv[])
 	free(result);
 
 	printf("Test 6...\n");
-	const float data6[0][2];
+	const float *data6 = 0;
 	r = polyline_encode(&result, data6, 0);
 	if (r != strlen(result)) {
 		printf("strlen and return value disagree!\n");
 		abort();
 	}
-	decode_print_compare(result, &data6[0][0], 0);
+	decode_print_compare(result, data6, 0);
 	free(result);
 }

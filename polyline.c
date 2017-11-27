@@ -121,24 +121,23 @@ _polyline_encode_float(uint8_t *chunks, const float f)
  * Return the length of the generated buffer.
  */
 int
-polyline_encode(char **polyline, const float coords[][2], size_t n)
+polyline_encode(char **polyline, const float const *coords, size_t n)
 {
 	struct buf buf = {0, };
-	const float *coords_ptr = &coords[0][0];
 	float lat_prev = 0.0f, lng_prev = 0.0f;
 	uint8_t chunk[max_5bit_chunks];
 
 	dprintf("start encode\n");
-	for (int i = 0; i < n; i++) {
+	for (size_t i = 0; i < n; i++) {
 		// 1) and 2)
-		float lat = coords_ptr[i * 2];
-		float lng = coords_ptr[i * 2 + 1];
+		float lat = coords[i * 2];
+		float lng = coords[i * 2 + 1];
 
 		lat = lat - lat_prev;
 		lng = lng - lng_prev;
 
-		lat_prev = coords_ptr[i * 2];
-		lng_prev = coords_ptr[i * 2 + 1];
+		lat_prev = coords[i * 2];
+		lng_prev = coords[i * 2 + 1];
 
 		size_t chunks = _polyline_encode_float(chunk, lat);
 		if (_add_chunks_to_buf(&buf, chunk, chunks, n - i)) {
