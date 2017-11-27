@@ -1,7 +1,6 @@
 /*
  * Encode and decode Google Polyline using C.
  *
- * https://developers.google.com/maps/documentation/utilities/polylinealgorithm
  */
 #include <assert.h>
 #include <math.h>
@@ -55,7 +54,7 @@ _add_chunks_to_buf(struct buf *buf, uint8_t *chunks, size_t n, size_t coords_lef
 
 		buf->data = realloc(buf->data, new_size * sizeof(float));
 		if (!buf->data)
-			return POLYLINE_NO_MEM;
+			return POLYLINE_OOM;
 		buf->size = new_size;
 		buf->allocs += 1;
 	}
@@ -65,6 +64,7 @@ _add_chunks_to_buf(struct buf *buf, uint8_t *chunks, size_t n, size_t coords_lef
 	buf->idx += n;
     return 0;
 }
+
 
 /*
  * Returns number of chunks created for use in copy.
@@ -117,9 +117,8 @@ _polyline_encode_float(uint8_t *chunks, const float f)
 
 	return i;
 }
-/*
- * Return the length of the generated buffer.
- */
+
+
 int
 polyline_encode(char **polyline, const float const *coords, size_t n)
 {
@@ -141,11 +140,11 @@ polyline_encode(char **polyline, const float const *coords, size_t n)
 
 		size_t chunks = _polyline_encode_float(chunk, lat);
 		if (_add_chunks_to_buf(&buf, chunk, chunks, n - i)) {
-			return POLYLINE_NO_MEM;
+			return POLYLINE_OOM;
 		}
 		chunks = _polyline_encode_float(chunk, lng);
 		if (_add_chunks_to_buf(&buf, chunk, chunks, n - i)) {
-			return POLYLINE_NO_MEM;
+			return POLYLINE_OOM;
 		}
 	}
 	chunk[0] = '\0';
@@ -157,6 +156,7 @@ polyline_encode(char **polyline, const float const *coords, size_t n)
 	*polyline = buf.data;
 	return buf.idx - 1;
 }
+
 
 /*
  * Allocate some memory with the assumption that only every 6 bytes
@@ -173,7 +173,7 @@ _add_coords_to_buf(struct buf *buf, const float *latlng, size_t input_left) {
 
 		buf->data = realloc(buf->data, new_size * sizeof(float));
 		if (!buf->data)
-			return POLYLINE_NO_MEM;
+			return POLYLINE_OOM;
 
 		buf->size = new_size;
 		buf->allocs += 1;
@@ -186,16 +186,9 @@ _add_coords_to_buf(struct buf *buf, const float *latlng, size_t input_left) {
 	return 0;
 }
 
-/*
- * Decode a polyline.
- *
- * Will allocate a buffer into `coords`. The caller is responsible to
- * free this buffer.
- *
- * Returns the number of coordinates. The number of float elements in
- * the allocated buffer is twice as many.
- */
-int polyline_decode(float **coords, const char *polyline)
+
+int
+polyline_decode(float **const coords, const char *polyline)
 {
 	struct buf buf = {0, };
 	uint32_t val = 0;
@@ -239,7 +232,7 @@ int polyline_decode(float **coords, const char *polyline)
 				prev_latlng[0] = prev_latlng[0] + latlng[0];
 				prev_latlng[1] = prev_latlng[1] + latlng[1];
 				if (_add_coords_to_buf(&buf, prev_latlng, polyline_left)) {
-					return POLYLINE_NO_MEM;
+					return POLYLINE_OOM;
 				}
 				latlng_idx = 0;
 			}

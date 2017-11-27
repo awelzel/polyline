@@ -1,6 +1,15 @@
 #include <stdio.h>
 #include "polyline.h"
 
+/*
+ * TODO: support encode and decode?
+ *
+ *   polyline encode str (where str can be any sort of array of floats in
+ *                        textual form) preprocess by removing everyting
+ *   polyline decode <s>
+ *     - decode a string
+ */
+
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <polyline>\n", argv[0]);
