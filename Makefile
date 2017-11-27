@@ -1,6 +1,6 @@
 .PHONY: clean
 
-CFLAGS ?= -O2 -Wall -pedantic -ansi -std=c99
+CFLAGS ?= -O2 -Wextra -pedantic -std=gnu11
 LIBS = -lm
 BINS = test polyline
 
