@@ -17,7 +17,8 @@ static void
 decode_line(float **dst, size_t *size, const char *line, int precision) {
 	int r;
 	if ((r = polyline_decode(dst, size, line)) < 0) {
-		eprintf("Failed to decode '%s'", line);
+		eprintf("Failed to decode '%s' - %s (%d)\n",
+			line, polyline_strerror(r), r);
 		return;
 	}
 
@@ -110,7 +111,8 @@ encode_line(char **dst, size_t *size, char *line) {
 	assert(floats == i);
 
 	if ((r = polyline_encode(dst, size, latlngs, i / 2)) < 0) {
-		eprintf("Failed to encode '%s'", line);
+		eprintf("Failed to encode '%s' - %s (%d)\n",
+			line, polyline_strerror(r), r);
 		printf("\n"); /* Empty line on errors */
 		goto err;
 	}
@@ -181,6 +183,7 @@ main(int argc, char *argv[])
 		char *lineptr = NULL;
 		size_t n = 0;
 		int r;
+
 		while ((r = getline(&lineptr, &n, stdin)) >= 0) {
 			if (lineptr[r - 1] == '\n') {
 				lineptr[r - 1] = '\0';
@@ -192,6 +195,7 @@ main(int argc, char *argv[])
 				encode_line((char **)&dst, &dst_size, lineptr);
 			}
 		}
+		fflush(stdout);
 		if (lineptr && n > 0)
 			free(lineptr);
 	} else {

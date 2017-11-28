@@ -1,18 +1,22 @@
 .PHONY: clean
 
-CFLAGS ?= -O2 -Wextra -pedantic -std=gnu11
+CFLAGS ?= -O2 -Wall -Wextra -std=gnu11
 LIBS = -lm
-BINS = test polyline
+BINS = test polyline example
 
-all: test libpolyline.a polyline
+all: test example libpolyline.a polyline
 
 polyline.o: polyline.c polyline.h
-	$(CC) $(CFLAGS) -Wextra -c $<
+	$(CC) $(CFLAGS) -c $<
 
 main.o: main.c polyline.h
+example.o: example.c polyline.h
 test.o: test.c polyline.h
 
 test: test.o polyline.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+example: example.o polyline.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 libpolyline.a: polyline.o
